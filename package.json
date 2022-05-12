@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.2",
+    "@coinbase/wallet-sdk": "^3.0.11",
     "@ethersproject/address": "^5.6.0",
     "@ethersproject/constants": "^5.6.0",
     "@ethersproject/contracts": "^5.6.0",
@@ -22,8 +23,10 @@
     "@walletconnect/web3-provider": "^1.7.8",
     "@web3-react/core": "^6.1.9",
     "@web3-react/injected-connector": "^6.0.7",
+    "@web3-react/walletconnect-connector": "^6.2.13",
+    "@web3-react/walletlink-connector": "^6.2.14",
     "axios": "^0.27.2",
-    "bulma": "^0.9.3",
+    "bulma": "^0.9.4",
     "ethers": "^5.6.5",
     "next": "12.1.6",
     "nprogress": "^0.2.0",
@@ -31,9 +34,11 @@
     "react-dom": "^17.0.2",
     "react-loading": "^2.0.3",
     "sharp": "^0.30.4",
+    "styled-components": "^5.3.5",
     "swiper": "^8.1.4",
     "use-nft": "^0.12.0",
-    "web3": "^1.7.3"
+    "web3": "^1.7.3",
+    "web3modal": "^1.9.7"
   },
   "devDependencies": {
     "eslint": "8.14.0",
