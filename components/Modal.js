@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import styled from "styled-components";
 
 
-const Modal = ({ isNFTUnstaking, isNFTApproving, isNFTStaking,isClaiming }) => {
+const Modal = ({ isNFTUnstaking, isNFTApproving, isNFTStaking,isClaiming,isProcessing }) => {
   const [isBrowser, setIsBrowser] = useState(false);
   const [option, setOption] = useState(0)
 
@@ -12,14 +12,14 @@ const Modal = ({ isNFTUnstaking, isNFTApproving, isNFTStaking,isClaiming }) => {
   }, []);
 
   useEffect(()=>{
-    if(isNFTStaking){
+    if(isNFTStaking || isNFTApproving){
       setOption(1)
     } else if(isNFTUnstaking) {
       setOption(2)
     } else if (isClaiming){
       setOption(3)
     }
-  },[isNFTUnstaking, isNFTStaking,isClaiming])
+  },[isNFTUnstaking, isNFTApproving,isNFTStaking,isClaiming])
 
   let modalContent;
   if(isNFTUnstaking || isClaiming){
@@ -51,34 +51,66 @@ const Modal = ({ isNFTUnstaking, isNFTApproving, isNFTStaking,isClaiming }) => {
       </StyledModalOverlay>
     )
   } else {
-    if(option==1){
-      modalContent = (
-        <StyledModalOverlay>
-          <StyledModal>
-              <span style={{"marginTop":"auto","marginBottom":"auto"}}>Completed Staking</span>
-              <button onClick={()=>setOption(0)}>Done</button>
-          </StyledModal>
-      </StyledModalOverlay>
-      )
-    } else if (option==2){
-      modalContent = (
-        <StyledModalOverlay>
-          <StyledModal>
-              Successfully Unstaked
-              <button onClick={()=>setOption(0)}>Done</button>
-          </StyledModal>
-      </StyledModalOverlay>
-      )
-    } else if (option==3){
-      modalContent = (
-        <StyledModalOverlay>
-          <StyledModal>
-              Successfully Claim
-              <button onClick={()=>setOption(0)}>Done</button>
-          </StyledModal>
-      </StyledModalOverlay>
-    )
+    if(isProcessing){
+      if(option==1){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                <span style={{"marginTop":"auto","marginBottom":"auto"}}>Completed Staking</span>
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+        </StyledModalOverlay>
+        )
+      } else if (option==2){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                Successfully Unstaked
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+        </StyledModalOverlay>
+        )
+      } else if (option==3){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                Successfully Claim
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+        </StyledModalOverlay>
+        )
+      }
+    } else {
+      if(option==1){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                <span style={{"marginTop":"auto","marginBottom":"auto"}}>Fail Staking</span>
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+          </StyledModalOverlay>
+        )
+      } else if (option==2){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                Fail Unstaked
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+          </StyledModalOverlay>
+        )
+      } else if (option==3){
+        modalContent = (
+          <StyledModalOverlay>
+            <StyledModal>
+                Fail Claim
+                <button onClick={()=>setOption(0)}>Done</button>
+            </StyledModal>
+          </StyledModalOverlay>
+        )
+      }
     }
+
   }
 
 

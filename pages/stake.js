@@ -10,7 +10,7 @@ import Modal from '../components/Modal'
 
 // Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faWallet, faCoins, faLongArrowLeft, faLongArrowRight } from '@fortawesome/free-solid-svg-icons'
+import { faWallet, faCoins, faLongArrowLeft, faLongArrowRight, faL } from '@fortawesome/free-solid-svg-icons'
 
 // Swiper
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -38,6 +38,10 @@ import CoinbaseWalletSDK from "@coinbase/wallet-sdk";
 import WalletConnect from "@walletconnect/web3-provider";
 import Web3Modal from "web3modal";
 
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Slide } from 'react-toastify'
+
 const providerOptions = {
 	// coinbasewallet: {
 	// 	package: CoinbaseWalletSDK, 
@@ -63,6 +67,12 @@ const Stake = () => {
 	const [isNFTStaking, setIsNFTStaking] = useState(false)
 	const [isNFTApproving, setIsNFTApproving] = useState(false)
 	const [isClaiming, setIsClaiming] = useState(false)
+	const [isProcessing, setIsProcessing] = useState(false)
+
+
+	const [isCheckedForUnstaking,setIsCheckedForUnstaking] = useState(false)
+	const [isCheckedForStaking,setIsCheckedForStaking] = useState(false)
+
 
 
 	const [ownStakedToken, setOwnStakedToken] = useState([])
@@ -82,17 +92,34 @@ const Stake = () => {
 			const library = new ethers.providers.Web3Provider(provider);
 			const accounts = await library.listAccounts();
 			const network = await library.getNetwork();
+			init_Status()
+
 			setProvider(provider);
 			setLibrary(library);
 			if (accounts) 
 				setWalletAddress(accounts[0]);
 			setNetwork(network);
-			init_Status()
+			if(network.chainId==4){
+				// getNFT()
+				// getStakedNFT()
+			} else{
+				errorToast("Please choose rinkeby")
+			}
+			
 		  } catch (error) {
 			console.error(error);
 		  }
 
 	}
+
+	const errorToast = (error) =>{
+		toast.error(error,{
+		  position: toast.POSITION.BOTTOM_RIGHT,
+		  autoClose: 3000,
+		  transition: Slide
+		})
+	}
+
 	const init_Status = () => {
 		let statsOfNFT = []
 		statsOfNFT.push({title:"Staking Power",value:0,descUp: "xSCALE",descDown: "per day"})
@@ -103,7 +130,7 @@ const Stake = () => {
 	}
 	
 	const disconnect = async() =>{
-		
+		setWalletAddress(null)
 	}
 
 	const getNFT = async() =>{
@@ -129,7 +156,7 @@ const Stake = () => {
 			}
 			setOwnToken(tokenlist)
 		} catch (error) {
-			alert("error in getNFT")
+			errorToast("error in getNFT")
 		}
 		SetIsNFTLoading(false)
 	}
@@ -139,7 +166,6 @@ const Stake = () => {
 		let checked = e.target.checked
 		let tokenlist = []
 		let flag = true
-		console.log(checked)
 		stakingTokenList.map((item)=>{
 			if(item==Number(tokenID)-1){
 				flag = false
@@ -151,14 +177,12 @@ const Stake = () => {
 			tokenlist.push(Number(tokenID)-1)
 		}
 		setStakingTokenList(tokenlist)
-		console.log(tokenlist)
 	}
 	const onClickStakeNFT = (e) => {
 		let tokenID = e.target.value
 		let checked = e.target.checked
 		let tokenlist = []
 		let flag = true
-		console.log(checked)
 		withdrawTokenList.map((item)=>{
 			if(item==Number(tokenID)-1){
 				flag = false
@@ -170,7 +194,35 @@ const Stake = () => {
 			tokenlist.push(Number(tokenID)-1)
 		}
 		setWithdrawTokenList(tokenlist)
-		console.log(tokenlist)
+	}
+
+	const setAllNFTForStaking = (e) =>{
+		let checked = e.target.checked
+		let tokenList = []
+		if(checked){
+			ownToken.map((token)=>{
+				tokenList.push(Number(token.edition)-1)
+			})
+			setIsCheckedForStaking(true)
+		} else{
+			setIsCheckedForStaking(false)
+		}
+		
+		setStakingTokenList(tokenList)
+	}
+
+	const setAllNFTForUnStaking = (e) =>{
+		let checked = e.target.checked
+		let tokenList = []
+
+		if(checked){
+			tokenList = ownStakedToken
+			setIsCheckedForUnstaking(true)
+		} else{
+			setIsCheckedForUnstaking(false)
+		}
+
+		setWithdrawTokenList(tokenList)
 	}
 
 	const stakeNFT = async(tokenID) => {
@@ -191,16 +243,18 @@ const Stake = () => {
 					if(receipt!=null){
 						getNFT()
 						getStakedNFT()
+						setIsProcessing(true)
 					}
 				} catch (error) {
-					
+					setIsProcessing(false)
 				}
 				setIsNFTStaking(false)
 			}
 
 		} catch (error) {
 			setIsNFTApproving(false)
-			alert("staking nft error")
+			setIsProcessing(false)
+			// errorToast("staking nft error")
 		}
 	}
 
@@ -213,34 +267,35 @@ const Stake = () => {
 			const nftContract = new ethers.Contract(address, mint, signer)
 			let count = 0
 			stakingTokenList.map(async(tokenID)=>{
-				let tx = await nftContract.approve(stakingAddress,tokenID)
-				let receipt = await tx.wait();
-				if(receipt!=null){
-					count +=1
-					console.log(tokenID)
-				}
-				console.log(stakingTokenList.length)
-				console.log(count)
-				if(count==stakingTokenList.length){
-					setIsNFTApproving(false)
-					setIsNFTStaking(true)
-					console.log("Adfadf")
-					try {
-						let tx = await stakingContract.deposit(stakingTokenList)
-						receipt = await tx.wait();
-						if(receipt!=null){
-							getNFT()
-							getStakedNFT()
-						}
-					} catch (error) {
-						
+				try {
+					let tx = await nftContract.approve(stakingAddress,tokenID)
+					let receipt = await tx.wait();
+					if(receipt!=null){
+						count +=1
 					}
-					setIsNFTStaking(false)
+					if(count==stakingTokenList.length){
+						setIsNFTApproving(false)
+						setIsNFTStaking(true)
+						try {
+							let tx = await stakingContract.deposit(stakingTokenList)
+							receipt = await tx.wait();
+							if(receipt!=null){
+								getNFT()
+								getStakedNFT()
+								setIsProcessing(true)
+							}
+						} catch (error) {
+							setIsProcessing(false)
+						}
+						setIsNFTStaking(false)
+					}
+				} catch (error) {
+					setIsNFTApproving(false)
+					setIsProcessing(false)
 				}
 			})
 			} catch (error) {
-				setIsNFTApproving(false)
-				alert("staking nft error")
+				errorToast("Please confirm Interenet Connection")
 		}
 	}
 
@@ -256,10 +311,11 @@ const Stake = () => {
 			if(receipt!=null){
 				getNFT()
 				getStakedNFT()
+				setIsProcessing(true)
 			}
-
 		} catch (error) {
-			alert("unskaking error")
+			// errorToast("unskaking error")
+			setIsProcessing(false)
 		}
 		setIsNFTUnstaking(false)
 	}
@@ -276,7 +332,7 @@ const Stake = () => {
 			})
 			setOwnStakedToken(tokenlist)
 		} catch (error) {
-			alert("error in getStakedNFT")
+			errorToast("error in getStakedNFT")
 		}
 	}
 
@@ -294,11 +350,14 @@ const Stake = () => {
 
 			if(receipt!=null){
 				const afterBalance = await tokenContract.balanceOf(walletAddress)
+				setIsProcessing(true)
+				getInfo()
 				// alert((BigNumber.from(afterBalance)-BigNumber.from(beforeBalance))/Math.pow(10,18) + "token was claimed")
 			}
-
 		} catch (error) {
-			alert("error in claim")
+			// errorToast("error in claim")
+			setIsProcessing(false)
+
 		}
 		setIsClaiming(false)
 	}
@@ -325,8 +384,7 @@ const Stake = () => {
 			setStats(statsOfNFT)
 
 		} catch (error) {
-			alert("getting info error")
-			console.log(error)
+			errorToast("getting info error")
 		}
 	}
 
@@ -375,7 +433,15 @@ const Stake = () => {
 				<section className="border-bottom" >
 					<div className="container is-max-wide loading_center">
 						<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
-							<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
+							<div className='is-flex is-align-items-center'>
+								{isCheckedForStaking?
+									<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForStaking}/>
+									:
+									<input  type="checkbox" className='mr-4' onChange={setAllNFTForStaking}/>
+								}
+								
+								<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
+							</div>
 							<button className="button is-white is-small is-rounded" disabled>Multi Staking</button>
 						</header>
 						<LoadingIndicator/>
@@ -387,8 +453,19 @@ const Stake = () => {
 				<section className="border-bottom">
 					<div className="container is-max-wide">
 						<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
-							<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
-							<button className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Multi Staking</button>
+							<div className='is-flex is-align-items-center'>
+								{isCheckedForStaking?
+									<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForStaking}/>
+									:
+									<input  type="checkbox" className='mr-4' onChange={setAllNFTForStaking}/>
+								}
+								<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
+							</div>
+							{stakingTokenList.length==0?
+								<button disabled className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Multi Staking</button>
+								:
+								<button  className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Multi Staking</button>					
+							}
 						</header>
 	
 						<Swiper
@@ -440,8 +517,19 @@ const Stake = () => {
 
 				<div className="container is-max-wide">
 					<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
-						<h2 className="title has-text-white is-4 is-uppercase mb-0">Staked</h2>
-						<button className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Multi withdraw</button>
+						<div className='is-flex is-align-items-center'>
+							{isCheckedForUnstaking?
+								<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForUnStaking}/>
+								:
+								<input  type="checkbox" className='mr-4' onChange={setAllNFTForUnStaking}/>
+							}
+							<h2 className="title has-text-white is-4 is-uppercase mb-0">Staked</h2>
+						</div>
+						{withdrawTokenList.length==0?
+							<button disabled className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Multi withdraw</button>
+							:
+							<button className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Multi withdraw</button>
+						}
 					</header>
 
 					<div className="columns is-multiline is-mobile">
@@ -475,15 +563,16 @@ const Stake = () => {
 	}
 
 	useEffect(()=>{
-		if(walletAddress){
+		if(walletAddress!=null){
 			getNFT()
 			getStakedNFT()
 		}
 	},[walletAddress])
 
 	useEffect(()=>{
-		if(walletAddress)
+		if(walletAddress!=null){
 			getInfo()
+		}
 	},[ownStakedToken,ownToken])
 
 
@@ -493,6 +582,7 @@ const Stake = () => {
 				<title>Stake NFT | Powerful Dragons</title>
 				<meta name="keywords" content="nft, fantom" />
 			</Head>
+			<ToastContainer />
 			
 			{walletAddress?			
 				<>
@@ -509,6 +599,7 @@ const Stake = () => {
 				isNFTApproving={isNFTApproving}
 				isNFTStaking={isNFTStaking}
 				isClaiming={isClaiming}
+				isProcessing={isProcessing}
 			/>
 		</>
      );
