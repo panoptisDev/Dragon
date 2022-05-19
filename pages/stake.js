@@ -31,7 +31,7 @@ import token from "../services/abi/token.json"
 import axios from "axios";
 
 const address = "0xDDfB8dB393165c3D8562178Ea29c23b2cde85D24"
-const stakingAddress = "0xE2e7BF2fA3cD6fA0808f331D897849d5Ff074547"
+const stakingAddress = "0xa1715189d2E7FF528D09a7dCc84171e74Bc3Af6D"
 const tokenContractAddress = "0x61E828eb964cFb6Db92BE47fa9Db0e00942B40bE"
 
 import CoinbaseWalletSDK from "@coinbase/wallet-sdk";
@@ -265,37 +265,28 @@ const Stake = () => {
 			const signer = provider.getSigner();
 			const stakingContract = new ethers.Contract(stakingAddress, staking, signer)
 			const nftContract = new ethers.Contract(address, mint, signer)
-			let count = 0
-			stakingTokenList.map(async(tokenID)=>{
+			let tx = await nftContract.setApprovalForAll(stakingAddress,true)
+			let receipt = await tx.wait();
+			if(receipt!=null){
+				setIsNFTApproving(false)
+				setIsNFTStaking(true)
 				try {
-					let tx = await nftContract.approve(stakingAddress,tokenID)
-					let receipt = await tx.wait();
+					tx = await stakingContract.deposit(stakingTokenList)
+					receipt = await tx.wait();
 					if(receipt!=null){
-						count +=1
-					}
-					if(count==stakingTokenList.length){
-						setIsNFTApproving(false)
-						setIsNFTStaking(true)
-						try {
-							let tx = await stakingContract.deposit(stakingTokenList)
-							receipt = await tx.wait();
-							if(receipt!=null){
-								getNFT()
-								getStakedNFT()
-								setIsProcessing(true)
-							}
-						} catch (error) {
-							setIsProcessing(false)
-						}
-						setIsNFTStaking(false)
+						getNFT()
+						getStakedNFT()
+						setIsProcessing(true)
 					}
 				} catch (error) {
-					setIsNFTApproving(false)
 					setIsProcessing(false)
 				}
-			})
-			} catch (error) {
-				errorToast("Please confirm Interenet Connection")
+				setIsNFTStaking(false)
+			}
+
+		} catch (error) {
+			setIsNFTApproving(false)
+			setIsProcessing(false)
 		}
 	}
 
