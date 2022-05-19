@@ -1,6 +1,10 @@
 import Head from 'next/head'
 import {useState, useEffect} from 'react'
 import Image from "next/image";
+
+// CSS
+import styles from "../styles/Stake.module.scss"
+
 // Components
 import StakeCard from '../components/StakeCard'
 import StakedCard from '../components/StakedCard'
@@ -10,7 +14,7 @@ import Modal from '../components/Modal'
 
 // Font Awesome
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faWallet, faCoins, faLongArrowLeft, faLongArrowRight, faL } from '@fortawesome/free-solid-svg-icons'
+import { faWallet, faCoins, faLongArrowLeft, faLongArrowRight, faArrowUpRightFromSquare, faPowerOff, faL } from '@fortawesome/free-solid-svg-icons'
 
 // Swiper
 import { Swiper, SwiperSlide } from 'swiper/react'
@@ -24,6 +28,7 @@ import { Navigation } from 'swiper'
 //connect wallet
 
 import { BigNumber, ethers } from 'ethers'
+
 //contract ABI
 import mint  from "../services/abi/mint.json";
 import staking from "../services/abi/staking.json"
@@ -63,6 +68,9 @@ const Stake = () => {
 	const [walletAddress, setWalletAddress] = useState(null)
 	const [isNFTLoading, SetIsNFTLoading] = useState(false)
 	const [ownToken, setOwnToken] = useState([])
+	const [tmpOwnToken, setTempOwnToken] = useState([])
+	const [countOfOwnNFT, setCountOwnNFT] = useState(0)
+
 	const [isNFTUnstaking, setIsNFTUnstaking] = useState(false)
 	const [isNFTStaking, setIsNFTStaking] = useState(false)
 	const [isNFTApproving, setIsNFTApproving] = useState(false)
@@ -82,6 +90,9 @@ const Stake = () => {
 	const [network, setNetwork] = useState();
 	const [stakingTokenList, setStakingTokenList] = useState([])
 	const [withdrawTokenList, setWithdrawTokenList] = useState([])
+
+
+
 
 	const connect = async() =>{
 		try {
@@ -122,10 +133,10 @@ const Stake = () => {
 
 	const init_Status = () => {
 		let statsOfNFT = []
-		statsOfNFT.push({title:"Staking Power",value:0,descUp: "xSCALE",descDown: "per day"})
-		statsOfNFT.push({title:"Total Earning",value:0,descUp: "xSCALE",descDown: "Last Update"})
-		statsOfNFT.push({title:"Hold NFT",value:0,descUp: "Dragon",descDown: "Wallet"})
-		statsOfNFT.push({title:"Staked NFT",value:0,descUp: "Dragon",descDown: "Contract"})
+		statsOfNFT.push({title:"Not Staked",value:0,descUp: "Fetching...",descDown: null})
+		statsOfNFT.push({title:"Staked",value:0,descUp: "Fetching...",descDown: null})
+		statsOfNFT.push({title:"Staking Power",value:0,descUp: "Fetching...",descDown: null})
+		statsOfNFT.push({title:"Total Rewards",value:0,descUp: "Fetching...",descDown: null})
 		setStats(statsOfNFT)
 	}
 	
@@ -141,24 +152,50 @@ const Stake = () => {
 			const nftContract = new ethers.Contract(address, mint, signer)
 			let count = await nftContract.balanceOf(walletAddress)
 			let  tokenlist = [];
+			
 			for (let  i = 0; i < Number(count); i++) {
 			  let token = await nftContract.tokenOfOwnerByIndex(walletAddress, i);
 	
 			  const metadataURI = await nftContract.tokenURI(Number(token))
-			  const fetchURI = "https://ipfs.io/"+metadataURI.split(":")[0]+'/'+metadataURI.split(":")[1].split("//")[1]
+
+			  const fetchURI = "https://ipfs.thirdweb.com/"+metadataURI.split(":")[0]+'/'+metadataURI.split(":")[1].split("//")[1]
 			  axios
 				.get(fetchURI)
 				.then(data => {
 					let nftData = data.data
 					tokenlist.push(nftData)
+					if(i==Number(count))
+						setTempOwnToken(tokenlist)
 				})
 				.catch(error => console.log(error));
+			  
 			}
-			setOwnToken(tokenlist)
+			setCountOwnNFT(Number(count))
 		} catch (error) {
 			errorToast("error in getNFT")
 		}
 		SetIsNFTLoading(false)
+	}
+
+	const sortNFT = () =>{
+		let min_idx = 0;
+		for (let i = 0; i <  tmpOwnToken.length-1; i++)
+		{
+			// Find the minimum element in unsorted array
+			min_idx = i;
+			for (let j = i + 1; j <  tmpOwnToken.length; j++)
+			{	
+				if (Number(tmpOwnToken[j].edition) < Number(tmpOwnToken[min_idx].edition))
+				{
+					min_idx = j;
+				}
+			}	
+			// Swap the found minimum element with the first element
+			let  temp = tmpOwnToken[min_idx];
+			tmpOwnToken[min_idx] = tmpOwnToken[i];
+			tmpOwnToken[i] = temp;
+		}
+		setOwnToken(tmpOwnToken)
 	}
 
 	const onClickUnstakeNFT = (e) => {
@@ -177,6 +214,7 @@ const Stake = () => {
 			tokenlist.push(Number(tokenID)-1)
 		}
 		setStakingTokenList(tokenlist)
+
 	}
 	const onClickStakeNFT = (e) => {
 		let tokenID = e.target.value
@@ -289,7 +327,6 @@ const Stake = () => {
 			setIsProcessing(false)
 		}
 	}
-
 	const unStakeNFT = async(tokenlist) => {
 		setIsNFTUnstaking(true)
 		try {
@@ -321,6 +358,24 @@ const Stake = () => {
 			count.map((item_count) =>{
 				tokenlist.push(Number(item_count))	
 			})
+			let min_idx = 0;
+
+			for (let i = 0; i < tokenlist.length-1; i++)
+			{
+				// Find the minimum element in unsorted array
+				min_idx = i;
+				for (let j = i + 1; j < tokenlist.length; j++)
+				{	
+					if (Number(tokenlist[j]) < Number(tokenlist[min_idx]))
+					{
+						min_idx = j;
+					}
+				}	
+				// Swap the found minimum element with the first element
+				let  temp = tokenlist[min_idx];
+				tokenlist[min_idx] = tokenlist[i];
+				tokenlist[i] = temp;
+			}
 			setOwnStakedToken(tokenlist)
 		} catch (error) {
 			errorToast("error in getStakedNFT")
@@ -365,13 +420,14 @@ const Stake = () => {
 			total_earning_Tx.map((item) => {
 				total_earning += item/Math.pow(10,18)
 			})
+
 			const count_stakedToken = ownStakedToken.length
 			const count_unStakedToken = ownToken.length
 			let statsOfNFT = []
-			statsOfNFT.push({title:"Staking Power",value:(Number(per_earning) * Number(count_stakedToken)).toFixed("1"),descUp: "xSCALE",descDown: "per day"})
-			statsOfNFT.push({title:"Total Earning",value:total_earning.toFixed("1"),descUp: "xSCALE",descDown: "Last Update"})
-			statsOfNFT.push({title:"Hold NFT",value:count_unStakedToken,descUp: "Dragon",descDown: "Wallet"})
-			statsOfNFT.push({title:"Staked NFT",value:count_stakedToken,descUp: "Dragon",descDown: "Contract"})
+			statsOfNFT.push({title:"Not Staked",value:count_unStakedToken,descUp: "Dragons",descDown: null})
+			statsOfNFT.push({title:"Staked",value:count_stakedToken,descUp: "Dragons",descDown: null})
+			statsOfNFT.push({title:"Staking Power",value:(Number(per_earning) * Number(count_stakedToken)).toFixed("1"),descUp: "/ day",descDown: null})
+			statsOfNFT.push({title:"Total Rewards",value:total_earning.toFixed("1"),descUp: "xSCALES",descDown: null})
 			setStats(statsOfNFT)
 
 		} catch (error) {
@@ -380,22 +436,22 @@ const Stake = () => {
 	}
 
 	const Header = () =>{
-		return(		
-		<header className="has-background-black-bis">
-			<div className="container is-max-wide pt-4 pb-4 is-flex is-align-items-center is-justify-content-space-between">
-				<h1 className="title has-text-white is-6 m-0 is-uppercase">My Collection</h1>
-				<div>
-					<button className="button is-success is-small is-rounded mr-3" onClick={()=>claim()}>
-						<FontAwesomeIcon icon={faCoins} className={"mr-2"} />
-						Claim
-					</button>
-					<button className="button is-danger is-small is-rounded" onClick={()=>disconnect()}>
-						<FontAwesomeIcon icon={faWallet} className={"mr-2"} />
-						Disconnect
-					</button>
+		return(
+			<header className="has-background-black-bis">
+				<div className="container is-max-wide pt-4 pb-4 is-flex is-align-items-center is-justify-content-space-between">
+					<h1 className="title has-text-white is-6 m-0 is-uppercase">My Dragons</h1>
+					<div>
+						<button className="button is-success is-small is-rounded mr-3" onClick={()=>claim()}>
+							<FontAwesomeIcon icon={faCoins} className={"mr-2"} />
+							Claim Rewards
+						</button>
+						<button className="button is-danger is-small is-rounded" onClick={()=>disconnect()}>
+							<FontAwesomeIcon icon={faPowerOff} style={{paddingTop: '3px', paddingBottom: '3px'}} />
+							<span className="ml-2 is-hidden-mobile">Disconnect</span>
+						</button>
+					</div>
 				</div>
-			</div>
-		</header>
+			</header>
 		);
 	}
 
@@ -407,7 +463,7 @@ const Stake = () => {
 
 						{stats.map((stat, index) => (
 
-							<div key={index} className="column is-half-mobile is-one-quarter-desktop">
+							<div key={index} className="column is-half-mobile is-half-tablet is-half-desktop is-one-quarter-fullhd">
 								<StakeStat title={stat.title} value={stat.value} descUp={stat.descUp} descDown={stat.descDown} />
 							</div>
 						))}
@@ -425,17 +481,26 @@ const Stake = () => {
 					<div className="container is-max-wide loading_center">
 						<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
 							<div className='is-flex is-align-items-center'>
-								{isCheckedForStaking?
-									<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForStaking}/>
-									:
-									<input  type="checkbox" className='mr-4' onChange={setAllNFTForStaking}/>
-								}
-								
-								<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
+								<h2 className="title has-text-white  is-size-5-mobile is-size-4-tablet is-uppercase mb-0">Not Staked</h2>
+								{/* <label className="checkbox">
+									{isCheckedForStaking?
+										<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForStaking}/>
+										:
+										<input  type="checkbox" className='mr-4' onChange={setAllNFTForStaking}/>
+									}
+									Select All
+								</label> */}
 							</div>
-							<button className="button is-white is-small is-rounded" disabled>Multi Staking</button>
+							{/* <button className="button is-white is-small is-rounded" disabled>Stake Multiple</button> */}
 						</header>
-						<LoadingIndicator/>
+						
+						<div className="load is-flex is-flex-direction-column is-align-items-center is-justify-content-center">
+							<figure className="image is-96x96 mb-3">
+								<img className="loadAnimation is-rounded" src="/loader.gif" />
+							</figure>
+							<strong className="has-text-primary">Fetching data from blockchain!</strong>
+							<small className="has-text-grey">Congestion may slow down loading time.</small>
+						</div>
 					</div>
 				</section>
 			);
@@ -444,18 +509,21 @@ const Stake = () => {
 				<section className="border-bottom">
 					<div className="container is-max-wide">
 						<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
-							<div className='is-flex is-align-items-center'>
-								{isCheckedForStaking?
-									<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForStaking}/>
-									:
-									<input  type="checkbox" className='mr-4' onChange={setAllNFTForStaking}/>
-								}
-								<h2 className="title has-text-white is-4 is-uppercase mb-0">Not Staked</h2>
+							<div className='is-flex is-align-items-center mr-auto'>
+								<h2 className="title has-text-white is-size-5-mobile is-size-4-tablet is-uppercase mb-0">Not Staked</h2>
 							</div>
+							<label className="checkbox has-text-success">
+								{isCheckedForStaking?
+									<input  type="checkbox" className='mr-4 is-hidden' checked onChange={setAllNFTForStaking}/>
+									:
+									<input  type="checkbox" className='mr-4 is-hidden' onChange={setAllNFTForStaking}/>
+								}
+								<span className="mr-4">Select All</span>
+							</label>
 							{stakingTokenList.length==0?
-								<button disabled className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Multi Staking</button>
+								<button disabled className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Stake Multiple</button>
 								:
-								<button  className="button is-white is-small is-rounded" onClick={()=>multiStaking()}>Multi Staking</button>					
+								<button  className="button is-success is-small is-rounded" onClick={()=>multiStaking()}>Stake Multiple {stakingTokenList.length} Dragons</button>					
 							}
 						</header>
 	
@@ -508,18 +576,21 @@ const Stake = () => {
 
 				<div className="container is-max-wide">
 					<header className="mb-5 is-flex is-align-items-center is-justify-content-space-between">
-						<div className='is-flex is-align-items-center'>
+						<h2 className="title has-text-white is-size-5-mobile is-size-4-tablet is-uppercase mb-0 mr-auto">Staked</h2>
+
+						<label className="checkbox has-text-success">
 							{isCheckedForUnstaking?
-								<input  type="checkbox" className='mr-4' checked onChange={setAllNFTForUnStaking}/>
+								<input  type="checkbox" className='is-hidden' checked onChange={setAllNFTForUnStaking}/>
 								:
-								<input  type="checkbox" className='mr-4' onChange={setAllNFTForUnStaking}/>
+								<input  type="checkbox" className='is-hidden' onChange={setAllNFTForUnStaking}/>
 							}
-							<h2 className="title has-text-white is-4 is-uppercase mb-0">Staked</h2>
-						</div>
+							<span className="mr-4">Select All</span>
+						</label>
+
 						{withdrawTokenList.length==0?
-							<button disabled className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Multi withdraw</button>
+							<button disabled className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Unstake Multiple</button>
 							:
-							<button className="button is-white is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Multi withdraw</button>
+							<button className="button is-success is-small is-rounded" onClick={()=>unStakeNFT(withdrawTokenList)}>Unstake Multiple {withdrawTokenList.length} Dragons</button>
 						}
 					</header>
 
@@ -538,18 +609,34 @@ const Stake = () => {
 	const ConnectWallet = () =>{
 		
 		return(
-			<section>
-				<div className="container">
-					<div className="column is-half">
-						<div className="box is-flex">
-							<button className="button is-primary is-rounded" onClick={()=>connect()}>
-								<FontAwesomeIcon icon={faWallet} className={"mr-2"} />
-								Connect Wallet
-							</button>
+			<div className={`${styles.connect} is-flex is-align-items-center is-justify-content-center`}>
+				<Image className={styles.cover} src="/banner-stake.jpg" alt="Powerful Dragons Tavern" layout="fill" objectFit="cover" objectPosition="center" />
+
+				<div className={`${styles.container}`}>
+					<div className="box boxWithGradient boxLargerBorder boxLessShadow p-5 pt-6 has-text-centered">
+						<figure className={styles.silver}>
+							<Image src="/silver.png" width={100} height={100} alt={"Silver Scale"} />
+						</figure>
+						<h1 className="title is-size-3 is-size-2-tablet is-size-1-desktop is-uppercase mt-5 mb-0">Stake Your NFT</h1>
+						<h2 className="title is-size-6 is-size-5-tablet is-size-4-desktop has-text-white has-text-weight-light mb-4">
+							EARN <span className="has-text-grey-light">xSILVER TOKENS</span> DAILY
+						</h2>
+						<div className="mb-6">
+							<a className="has-text-success" href="#">
+								Read Whitepaper
+								<FontAwesomeIcon icon={faArrowUpRightFromSquare} className={"ml-2"} />
+							</a>
 						</div>
+						<button className="button is-accent is-rounded mb-2" onClick={()=>connect()}>
+							<FontAwesomeIcon icon={faWallet} className={"mr-2"} />
+							Connect Wallet
+						</button>
 					</div>
+					<p className="has-text-centered">
+						We are on <span className="tag is-info has-text-weight-bold">FANTOM</span>
+					</p>
 				</div>
-			</section>
+			</div>
 		);
 	}
 
@@ -559,6 +646,13 @@ const Stake = () => {
 			getStakedNFT()
 		}
 	},[walletAddress])
+
+	useEffect(()=>{
+
+		if(tmpOwnToken.length==countOfOwnNFT&&countOfOwnNFT!=0){
+			sortNFT()
+		}
+	},[tmpOwnToken])
 
 	useEffect(()=>{
 		if(walletAddress!=null){

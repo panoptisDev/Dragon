@@ -1,5 +1,34 @@
 @import 'variables';
 
+// *** CONNECT WALLET SCREEN ***
+.connect {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+
+    // Container
+    .container {
+        position: relative;
+        padding: 16px;
+        width: 600px;
+        max-width: 600px;
+    }
+}
+
+// Silver Logo
+.silver {
+    position: absolute;
+    top: -45px;
+    left: 50%;
+    margin-left: -50px;
+}
+
+
+
+.cover {
+    z-index: -1;
+}
+
 .stakeCard {
     background-color: #0C0C0C;
     border-radius: 10px;
@@ -38,8 +67,12 @@
 // Stake Stat
 
 .value {
+    // white-space: nowrap;
+    // overflow: hidden;
+    // text-overflow: ellipsis;
+    // width: 100%;
+
     margin-right: 8px;
-    font-size: 36px;
     font-weight: 400;
     height: 40px;
     line-height: 41px;
